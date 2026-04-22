@@ -1,0 +1,83 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   KARYIKA v3 — Tasks System CSS Additions
+   Paste this INSIDE your existing globals.css after your current variables.
+   File: src/styles/globals.css (additions only)
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* ── Easing tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth:  cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:     cubic-bezier(0, 0, 0.2, 1);
+  --ease-in:      cubic-bezier(0.4, 0, 1, 1);
+  --ease-bounce:  cubic-bezier(0.68, -0.55, 0.27, 1.55);
+
+  /* Canvas background (warmer than pure white) */
+  --bg-canvas: #F5F5F4;
+  --bg-hover:  #EAEAE8;
+  --border-subtle: rgba(0,0,0,0.06);
+  --border-default: rgba(0,0,0,0.10);
+  --border-strong:  rgba(0,0,0,0.18);
+}
+
+[data-theme="dark"] {
+  --bg-canvas: #0D0D0C;
+  --bg-hover:  #2C2C2A;
+  --border-subtle:  rgba(255,255,255,0.06);
+  --border-default: rgba(255,255,255,0.10);
+  --border-strong:  rgba(255,255,255,0.18);
+}
+
+/* ── Task completion animation ──────────────────────────────────────────────── */
+@keyframes taskComplete {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.18); background-color: #10B981; border-color: #10B981; }
+  70%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+/* ── Shimmer skeleton ───────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-tertiary) 25%,
+    var(--bg-hover) 37%,
+    var(--bg-tertiary) 63%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ── Page enter animation ───────────────────────────────────────────────────── */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: pageEnter 200ms var(--ease-out) forwards;
+}
+
+/* ── Scrollbar (thin, tasteful) ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* ── Reduce motion ──────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
