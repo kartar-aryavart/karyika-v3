@@ -28,7 +28,7 @@ export interface Task {
   subtasks: Subtask[]
   customFields?: Record<string, string>
   dependencies?: { blocks: string[]; waitingOn: string[]; relatesTo: string[] }
-  recurring?: { type: string; interval?: string; mode: 'on_schedule' | 'on_completion' }
+  recurring?: string | null  // 'none'|'daily'|'weekdays'|'weekly'|'monthly'
   sprintId?: string | null     // 'backlog' | 'sprint-1' | 'sprint-2'
   urgency?: 'urgent' | 'not-urgent'
   importance?: 'important' | 'not-important'
@@ -58,7 +58,7 @@ export interface TaskCreateInput {
   tags?: string[]
   subtasks?: Subtask[]
   customFields?: Record<string, string>
-  recurring?: Task['recurring']
+  recurring?: string | null
   sprintId?: string
   urgency?: string
   importance?: string

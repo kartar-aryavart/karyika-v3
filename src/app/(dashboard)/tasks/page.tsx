@@ -126,7 +126,7 @@ function TaskFormModal({ initial, onSave, onClose, projects = [] }: { initial?: 
                 <div><label style={LBL}>Importance</label><select value={form.importance ?? ''} onChange={e => set('importance', e.target.value)} style={INP}><option value="important">⭐ Important</option><option value="not-important">• Not Important</option></select></div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={LBL}>Recurring</label><select value={typeof form.recurring === 'string' ? form.recurring : (form.recurring?.type ?? 'none')} onChange={e => set('recurring', e.target.value)} style={INP}><option value="none">No repeat</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
+                <div><label style={LBL}>Recurring</label><select value={form.recurring ?? 'none'} onChange={e => set('recurring', e.target.value)} style={INP}><option value="none">No repeat</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
                 <div><label style={LBL}>Sprint</label><select value={form.sprintId ?? 'backlog'} onChange={e => set('sprintId', e.target.value)} style={INP}><option value="backlog">📦 Backlog</option><option value="sprint-1">🏃 Sprint 1</option><option value="sprint-2">🏃 Sprint 2</option></select></div>
               </div>
               <div><label style={LBL}>Cover Color</label><div style={{ display: 'flex', gap: 8 }}>{['', '#FF6B35', '#F43F5E', '#10B981', '#818CF8', '#F59E0B', '#06B6D4', '#8B5CF6'].map(c => <div key={c} onClick={() => set('coverColor', c)} style={{ width: 24, height: 24, borderRadius: 6, background: c || 'rgba(255,255,255,0.08)', cursor: 'pointer', border: `2px solid ${form.coverColor === c ? '#fff' : 'transparent'}`, transition: 'border 0.15s' }} />)}</div></div>
@@ -266,7 +266,7 @@ function TaskRow({ task, selected, onSelect, onToggle, onEdit, onDelete }: { tas
           {task.coverColor && <div style={{ width: 8, height: 8, borderRadius: '50%', background: task.coverColor, flexShrink: 0 }} />}
           <span style={{ fontSize: 13, fontWeight: 600, color: task.done ? 'var(--text3)' : 'var(--text)', textDecoration: task.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</span>
           {(task.points ?? 0) > 0 && <span style={{ fontSize: 9, padding: '1px 5px', background: 'rgba(129,140,248,0.15)', color: 'var(--indigo)', borderRadius: 10, fontWeight: 800, flexShrink: 0 }}>{task.points}pt</span>}
-          {task.recurring && task.recurring !== 'none' && <span style={{ fontSize: 9, color: 'var(--text3)' }}>🔄</span>}
+          {task.recurring && (task.recurring as string) !== 'none' && <span style={{ fontSize: 9, color: 'var(--text3)' }}>🔄</span>}
         </div>
         <div style={{ display: 'flex', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
           {(task.tags ?? []).slice(0, 3).map(tag => <span key={tag} style={{ fontSize: 10, padding: '1px 6px', background: 'rgba(255,107,53,0.08)', color: 'var(--accent2)', borderRadius: 10 }}>#{tag}</span>)}
