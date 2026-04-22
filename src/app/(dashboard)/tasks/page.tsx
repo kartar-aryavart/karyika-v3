@@ -151,7 +151,7 @@ function TaskModal({ initial, onSave, onClose, projects }: {
                   <div style={LBL}>Quick Templates</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {TASK_TEMPLATES.map(tpl => (
-                      <button key={tpl.label} onClick={() => setForm(f => ({ ...f, ...tpl, tags: tpl.tags ?? [], title: f.title || tpl.label.split(' ').slice(1).join(' ') }))}
+                      <button key={tpl.label} onClick={() => setForm(f => ({ ...f, ...tpl, estimatedTime: tpl.estimatedTime?.toString() ?? '', tags: tpl.tags ?? [], title: f.title || tpl.label.split(' ').slice(1).join(' ') }))}
                         style={{ padding: '4px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, color: 'var(--text3)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}
                         onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
                         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
