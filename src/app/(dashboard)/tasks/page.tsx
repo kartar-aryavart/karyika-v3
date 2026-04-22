@@ -94,17 +94,17 @@ function TaskFormModal({ initial, onSave, onClose, projects = [] }: { initial?: 
                   </div>
                 </div>
               )}
-              <div><label style={LBL}>Title *</label><input value={form.title} onChange={e => set('title', e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSave()} placeholder="What needs to be done?" autoFocus style={{ ...INP, fontSize: 15, fontWeight: 600 }} /></div>
-              <div><label style={LBL}>Description</label><textarea value={form.desc} onChange={e => set('desc', e.target.value)} placeholder="Add details, steps, notes..." rows={3} style={{ ...INP, resize: 'vertical', lineHeight: 1.6 }} /></div>
+              <div><label style={LBL}>Title *</label><input value={form.title ?? ''} onChange={e => set('title', e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSave()} placeholder="What needs to be done?" autoFocus style={{ ...INP, fontSize: 15, fontWeight: 600 }} /></div>
+              <div><label style={LBL}>Description</label><textarea value={form.desc ?? ''} onChange={e => set('desc', e.target.value)} placeholder="Add details, steps, notes..." rows={3} style={{ ...INP, resize: 'vertical', lineHeight: 1.6 }} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={LBL}>Priority</label><select value={form.priority} onChange={e => set('priority', e.target.value)} style={INP}><option value="urgent">🔴 Urgent</option><option value="high">🟠 High</option><option value="medium">🟡 Medium</option><option value="low">🟢 Low</option><option value="none">⚪ None</option></select></div>
-                <div><label style={LBL}>Status</label><select value={form.status} onChange={e => set('status', e.target.value)} style={INP}>{STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></div>
+                <div><label style={LBL}>Priority</label><select value={form.priority ?? ''} onChange={e => set('priority', e.target.value)} style={INP}><option value="urgent">🔴 Urgent</option><option value="high">🟠 High</option><option value="medium">🟡 Medium</option><option value="low">🟢 Low</option><option value="none">⚪ None</option></select></div>
+                <div><label style={LBL}>Status</label><select value={form.status ?? ''} onChange={e => set('status', e.target.value)} style={INP}>{STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={LBL}>Due Date</label><input type="date" value={form.due} onChange={e => set('due', e.target.value)} style={{ ...INP, colorScheme: 'dark' }} /></div>
-                <div><label style={LBL}>Due Time</label><input type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} style={{ ...INP, colorScheme: 'dark' }} /></div>
+                <div><label style={LBL}>Due Date</label><input type="date" value={form.due ?? ''} onChange={e => set('due', e.target.value)} style={{ ...INP, colorScheme: 'dark' }} /></div>
+                <div><label style={LBL}>Due Time</label><input type="time" value={form.dueTime ?? ''} onChange={e => set('dueTime', e.target.value)} style={{ ...INP, colorScheme: 'dark' }} /></div>
               </div>
-              {projects.length > 0 && <div><label style={LBL}>Project</label><select value={form.projectId} onChange={e => set('projectId', e.target.value)} style={INP}><option value="">No project</option>{projects.map((p: any) => <option key={p.id} value={p.id}>{p.emoji || '📁'} {p.name}</option>)}</select></div>}
+              {projects.length > 0 && <div><label style={LBL}>Project</label><select value={form.projectId ?? ''} onChange={e => set('projectId', e.target.value)} style={INP}><option value="">No project</option>{projects.map((p: any) => <option key={p.id} value={p.id}>{p.emoji || '📁'} {p.name}</option>)}</select></div>}
               <div>
                 <label style={LBL}>Tags</label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -118,15 +118,15 @@ function TaskFormModal({ initial, onSave, onClose, projects = [] }: { initial?: 
           {tab === 'details' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={LBL}>Est. Time (min)</label><input type="number" value={form.estimatedTime} onChange={e => set('estimatedTime', parseInt(e.target.value) || 0)} placeholder="e.g. 60" style={INP} /></div>
-                <div><label style={LBL}>Story Points</label><select value={form.points} onChange={e => set('points', parseInt(e.target.value))} style={INP}>{[0, 1, 2, 3, 5, 8, 13, 21].map(p => <option key={p} value={p}>{p === 0 ? 'No points' : `${p} pts`}</option>)}</select></div>
+                <div><label style={LBL}>Est. Time (min)</label><input type="number" value={form.estimatedTime ?? ''} onChange={e => set('estimatedTime', parseInt(e.target.value) || 0)} placeholder="e.g. 60" style={INP} /></div>
+                <div><label style={LBL}>Story Points</label><select value={form.points ?? 0} onChange={e => set('points', parseInt(e.target.value))} style={INP}>{[0, 1, 2, 3, 5, 8, 13, 21].map(p => <option key={p} value={p}>{p === 0 ? 'No points' : `${p} pts`}</option>)}</select></div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={LBL}>Urgency</label><select value={form.urgency} onChange={e => set('urgency', e.target.value)} style={INP}><option value="urgent">🔥 Urgent</option><option value="not-urgent">🕐 Not Urgent</option></select></div>
-                <div><label style={LBL}>Importance</label><select value={form.importance} onChange={e => set('importance', e.target.value)} style={INP}><option value="important">⭐ Important</option><option value="not-important">• Not Important</option></select></div>
+                <div><label style={LBL}>Urgency</label><select value={form.urgency ?? ''} onChange={e => set('urgency', e.target.value)} style={INP}><option value="urgent">🔥 Urgent</option><option value="not-urgent">🕐 Not Urgent</option></select></div>
+                <div><label style={LBL}>Importance</label><select value={form.importance ?? ''} onChange={e => set('importance', e.target.value)} style={INP}><option value="important">⭐ Important</option><option value="not-important">• Not Important</option></select></div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={LBL}>Recurring</label><select value={form.recurring} onChange={e => set('recurring', e.target.value)} style={INP}><option value="none">No repeat</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
+                <div><label style={LBL}>Recurring</label><select value={form.recurring ?? ''} onChange={e => set('recurring', e.target.value)} style={INP}><option value="none">No repeat</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
                 <div><label style={LBL}>Sprint</label><select value={form.sprintId ?? 'backlog'} onChange={e => set('sprintId', e.target.value)} style={INP}><option value="backlog">📦 Backlog</option><option value="sprint-1">🏃 Sprint 1</option><option value="sprint-2">🏃 Sprint 2</option></select></div>
               </div>
               <div><label style={LBL}>Cover Color</label><div style={{ display: 'flex', gap: 8 }}>{['', '#FF6B35', '#F43F5E', '#10B981', '#818CF8', '#F59E0B', '#06B6D4', '#8B5CF6'].map(c => <div key={c} onClick={() => set('coverColor', c)} style={{ width: 24, height: 24, borderRadius: 6, background: c || 'rgba(255,255,255,0.08)', cursor: 'pointer', border: `2px solid ${form.coverColor === c ? '#fff' : 'transparent'}`, transition: 'border 0.15s' }} />)}</div></div>
