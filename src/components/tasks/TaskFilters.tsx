@@ -2,10 +2,9 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { cn, PRIORITY_CONFIG, STATUS_CONFIG } from '@/lib/utils'
 import type { TaskFilters } from '@/types/tasks'
 import type { TaskStatus, TaskPriority } from '@/types'
-import { PRIORITY_CONFIG, STATUS_CONFIG } from '@/types/tasks'
 
 // ─── Filter Pill ─────────────────────────────────────────────────────────────
 

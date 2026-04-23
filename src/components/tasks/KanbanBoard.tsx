@@ -18,8 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
-import { STATUS_CONFIG } from '@/types/tasks'
+import { cn, STATUS_CONFIG } from '@/lib/utils'
 import type { Task, TaskStatus } from '@/types'
 import { TaskCard } from './TaskCard'
 import { QuickAdd } from './QuickAdd'

@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '@/lib/utils'
-import { PRIORITY_CONFIG, STATUS_CONFIG } from '@/types/tasks'
+import { cn, PRIORITY_CONFIG, STATUS_CONFIG } from '@/lib/utils'
 import type { Task, TaskPriority, TaskStatus } from '@/types'
 import { useUpdateTask, useDeleteTask } from '@/hooks/useTasks'
 
