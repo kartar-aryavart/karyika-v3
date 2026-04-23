@@ -671,8 +671,11 @@ export default function TasksPage() {
 
   const mutCreate = useMutation({
     mutationFn: (data: any) => apiPost('/api/tasks', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tasks'] }); toast('Task added! 🎉', 'success') },
-    onError: () => toast('Failed to create task', 'error'),
+    onSuccess: async () => { 
+      await qc.invalidateQueries({ queryKey: ['tasks'] })
+      toast('Task added! 🎉', 'success') 
+    },
+    onError: (err: any) => toast(err?.message || 'Failed to create task', 'error'),
   })
   const mutUpdate = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => apiPatch(`/api/tasks/${id}`, data),
@@ -706,8 +709,17 @@ export default function TasksPage() {
     if (editTask?.id) {
       await mutUpdate.mutateAsync({ id: editTask.id, data })
       toast('Updated! ✅')
+      setShowForm(false)
+      setEditTask(null)
     } else {
-      await mutCreate.mutateAsync(data)
+      try {
+        await mutCreate.mutateAsync(data)
+        setShowForm(false)
+        setEditTask(null)
+      } catch (err: any) {
+        console.error('Create task error:', err)
+        toast('Failed: ' + (err?.message || 'Unknown error'), 'error')
+      }
     }
   }
 
