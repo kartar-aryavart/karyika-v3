@@ -670,13 +670,32 @@ export default function TasksPage() {
   }, [])
 
   const mutCreate = useMutation({
-    mutationFn: (data: any) => apiPost('/api/tasks', data),
+    mutationFn: async (data: any) => {
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to create task')
+      return json
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['tasks'] }); toast('Task added! 🎉', 'success') },
-    onError: () => toast('Failed to create task', 'error'),
+    onError: (e: any) => toast(e.message || 'Failed to create task', 'error'),
   })
   const mutUpdate = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => apiPatch(`/api/tasks/${id}`, data),
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to update task')
+      return json
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+    onError: (e: any) => toast(e.message || 'Failed to update', 'error'),
   })
   const mutDelete = useMutation({
     mutationFn: (id: string) => apiDelete(`/api/tasks/${id}`),
@@ -685,23 +704,23 @@ export default function TasksPage() {
 
   const handleSave = async (form: FormState) => {
     const data = {
-      title: form.title,
-      desc: form.desc || null,
-      status: form.status,
-      priority: form.priority,
-      due: form.due || null,
-      dueTime: form.dueTime || null,
-      estimatedTime: form.estimatedTime ? parseInt(form.estimatedTime) : null,
-      points: form.points,
-      project_id: form.projectId || null,
-      tags: form.tags,
-      subtasks: form.subtasks,
-      customFields: form.customFields,
-      sprintId: form.sprintId,
-      urgency: form.urgency,
-      importance: form.importance,
-      coverColor: form.coverColor || null,
-      recurring: form.recurring !== 'none' ? form.recurring : null,
+      title:          form.title,
+      description:    form.desc || null,
+      status:         form.status,
+      priority:       form.priority,
+      due:            form.due || null,
+      due_time:       form.dueTime || null,
+      estimated_time: form.estimatedTime ? parseInt(form.estimatedTime) : null,
+      points:         form.points ?? 0,
+      project_id:     form.projectId || null,
+      tags:           form.tags,
+      subtasks:       form.subtasks,
+      custom_fields:  form.customFields,
+      sprint_id:      form.sprintId,
+      urgency:        form.urgency,
+      importance:     form.importance,
+      cover_color:    form.coverColor || null,
+      recurring:      (form.recurring && form.recurring !== 'none') ? form.recurring : null,
     }
     if (editTask?.id) {
       await mutUpdate.mutateAsync({ id: editTask.id, data })
@@ -711,7 +730,7 @@ export default function TasksPage() {
     }
   }
 
-  const handleToggle = (t: Task) => mutUpdate.mutate({ id: t.id, data: { done: !t.done, status: !t.done ? 'done' : 'todo', completedAt: !t.done ? new Date().toISOString() : null } })
+  const handleToggle = (t: Task) => mutUpdate.mutate({ id: t.id, data: { done: !t.done, status: !t.done ? 'done' : 'todo', completed_at: !t.done ? new Date().toISOString() : null } })
   const handleDelete = (id: string) => { if (!window.confirm('Delete this task?')) return; mutDelete.mutate(id); setSelected(s => { const n = new Set(s); n.delete(id); return n }) }
   const handleStatusChange = (t: Task, status: string) => mutUpdate.mutate({ id: t.id, data: { status, done: status === 'done' } })
 
