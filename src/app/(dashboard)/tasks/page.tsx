@@ -19,14 +19,7 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 // ─── SAFE FETCH (always returns []) ───────────────────────────────────────────
 const safeArr = (d: unknown): any[] => (Array.isArray(d) ? d : [])
 const apiFetch  = (url: string) => fetch(url).then(r => r.json()).then(safeArr)
-const apiPost   = (url: string, data: any) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(async r => {
-  const json = await r.json()
-  if (!r.ok) {
-    console.error(`[POST ${url}] Error:`, r.status, json)
-    throw new Error(json?.error || `HTTP ${r.status}`)
-  }
-  return json
-})
+const apiPost   = (url: string, data: any) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json())
 const apiPatch  = (url: string, data: any) => fetch(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json())
 const apiDelete = (url: string) => fetch(url, { method: 'DELETE' })
 
@@ -158,7 +151,7 @@ function TaskModal({ initial, onSave, onClose, projects }: {
                   <div style={LBL}>Quick Templates</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {TASK_TEMPLATES.map(tpl => (
-                      <button key={tpl.label} onClick={() => setForm(f => ({ ...f, ...tpl, estimatedTime: tpl.estimatedTime?.toString() ?? '', tags: tpl.tags ?? [], title: f.title || tpl.label.split(' ').slice(1).join(' ') }))}
+                      <button key={tpl.label} onClick={() => setForm(f => ({ ...f, ...tpl, estimatedTime: tpl.estimatedTime != null ? String(tpl.estimatedTime) : '', tags: tpl.tags ?? [], title: f.title || tpl.label.split(' ').slice(1).join(' ') }))}
                         style={{ padding: '4px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, color: 'var(--text3)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}
                         onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
                         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
@@ -396,17 +389,11 @@ function QuickAdd({ onAdd }: { onAdd: (data: any) => void }) {
   const submit = async () => {
     if (!val.trim() || saving) return
     setSaving(true)
-    try {
-      const data = preview
-        ? { title: preview.title || val.trim(), due: preview.due || null, dueTime: preview.dueTime || null, priority: preview.priority ?? 'none', tags: preview.tags ?? [], status: 'todo', subtasks: [], customFields: {} }
-        : { title: val.trim(), priority: 'none', tags: [], status: 'todo', subtasks: [], customFields: {} }
-      onAdd(data)
-      setVal(''); setPreview(null)
-    } catch (err) {
-      console.error('QuickAdd error:', err)
-    } finally {
-      setSaving(false)
-    }
+    const data = preview
+      ? { title: preview.title || val.trim(), due: preview.due || null, dueTime: preview.dueTime || null, priority: preview.priority ?? 'none', tags: preview.tags ?? [] }
+      : { title: val.trim(), priority: 'none', tags: [] }
+    onAdd(data)
+    setVal(''); setPreview(null); setSaving(false)
   }
 
   return (
@@ -683,21 +670,9 @@ export default function TasksPage() {
   }, [])
 
   const mutCreate = useMutation({
-    mutationFn: async (data: any) => {
-      console.log('Creating task with data:', data)
-      const res = await apiPost('/api/tasks', data)
-      console.log('API response:', res)
-      return res
-    },
-    onSuccess: async (res) => { 
-      console.log('Task created successfully, invalidating queries...')
-      await qc.invalidateQueries({ queryKey: ['tasks'] })
-      toast('Task added! 🎉', 'success') 
-    },
-    onError: (err: any) => {
-      console.error('Mutation error:', err)
-      toast(err?.message || 'Failed to create task', 'error')
-    },
+    mutationFn: (data: any) => apiPost('/api/tasks', data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tasks'] }); toast('Task added! 🎉', 'success') },
+    onError: () => toast('Failed to create task', 'error'),
   })
   const mutUpdate = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => apiPatch(`/api/tasks/${id}`, data),
@@ -731,17 +706,8 @@ export default function TasksPage() {
     if (editTask?.id) {
       await mutUpdate.mutateAsync({ id: editTask.id, data })
       toast('Updated! ✅')
-      setShowForm(false)
-      setEditTask(null)
     } else {
-      try {
-        await mutCreate.mutateAsync(data)
-        setShowForm(false)
-        setEditTask(null)
-      } catch (err: any) {
-        console.error('Create task error:', err)
-        toast('Failed: ' + (err?.message || 'Unknown error'), 'error')
-      }
+      await mutCreate.mutateAsync(data)
     }
   }
 

@@ -188,13 +188,13 @@ export const STATUS_LABEL: Record<string, string> = {
   'blocked': 'Blocked', 'hold': 'On Hold', 'done': 'Done', 'cancelled': 'Cancelled'
 }
 export const STATUSES = Object.entries(STATUS_LABEL).map(([id, label]) => ({ id, label, color: STATUS_COLOR[id] }))
-export const TASK_TEMPLATES = [
-  { label: '🐛 Bug Report',    priority: 'high',   tags: ['bug'],       estimatedTime: 60,  desc: 'Steps to reproduce:\n1. \n\nExpected:\nActual:' },
-  { label: '✨ Feature',        priority: 'medium', tags: ['feature'],   estimatedTime: 120, desc: 'User story: As a user, I want to...' },
-  { label: '📝 Documentation', priority: 'low',    tags: ['docs'],      estimatedTime: 30,  desc: 'Document the following:' },
-  { label: '🔍 Research',      priority: 'medium', tags: ['research'],  estimatedTime: 90,  desc: 'Research goal:\nKey questions:' },
-  { label: '📞 Meeting',       priority: 'medium', tags: ['meeting'],   estimatedTime: 45,  desc: 'Agenda:\n1. \n\nAction items:' },
-  { label: '🚀 Release',       priority: 'urgent', tags: ['release'],   estimatedTime: 180, desc: 'Version:\nChangelog:' },
+export const TASK_TEMPLATES: { label: string; priority: string; tags: string[]; estimatedTime: string; desc: string }[] = [
+  { label: '🐛 Bug Report',    priority: 'high',   tags: ['bug'],       estimatedTime: '60',  desc: 'Steps to reproduce:\n1. \n\nExpected:\nActual:' },
+  { label: '✨ Feature',        priority: 'medium', tags: ['feature'],   estimatedTime: '120', desc: 'User story: As a user, I want to...' },
+  { label: '📝 Documentation', priority: 'low',    tags: ['docs'],      estimatedTime: '30',  desc: 'Document the following:' },
+  { label: '🔍 Research',      priority: 'medium', tags: ['research'],  estimatedTime: '90',  desc: 'Research goal:\nKey questions:' },
+  { label: '📞 Meeting',       priority: 'medium', tags: ['meeting'],   estimatedTime: '45',  desc: 'Agenda:\n1. \n\nAction items:' },
+  { label: '🚀 Release',       priority: 'urgent', tags: ['release'],   estimatedTime: '180', desc: 'Version:\nChangelog:' },
 ]
 export const todayStr = () => new Date().toISOString().split('T')[0]
 export const fmt = (d?: string | null) => {

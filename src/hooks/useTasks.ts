@@ -93,7 +93,7 @@ export function useCreateTask() {
 
       // Optimistic: create temp task
       const tempTask: Task = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         user_id: '',
         project_id: newTask.project_id ?? null,
         parent_id: newTask.parent_id ?? null,

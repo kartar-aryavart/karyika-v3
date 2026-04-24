@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+// Map camelCase keys from client → snake_case DB columns
+const toSnake: Record<string, string> = {
+  dueTime: 'due_time', startDate: 'start_date', estimatedTime: 'estimated_time',
+  actualTime: 'actual_time', customFields: 'custom_fields', sprintId: 'sprint_id',
+  coverColor: 'cover_color', completedAt: 'completed_at', assigneeId: 'assignee_id',
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient()
     const { data: { user }, error: ae } = await supabase.auth.getUser()
@@ -13,14 +17,16 @@ export async function PATCH(
     const { id } = await params
     const body = await req.json()
 
-    // Strip undefined + convert '' to null for number fields
+    // Normalize keys + clean empty strings
     const clean: Record<string, any> = {}
     for (const [k, v] of Object.entries(body)) {
       if (v === undefined) continue
-      if ((k === 'estimatedTime' || k === 'actualTime' || k === 'points') && v === '') {
-        clean[k] = null
+      const col = toSnake[k] ?? k  // remap camelCase → snake_case
+      // Convert '' → null for numeric/optional fields
+      if (['estimated_time', 'actual_time', 'points'].includes(col) && v === '') {
+        clean[col] = null
       } else {
-        clean[k] = v
+        clean[col] = v
       }
     }
 
@@ -33,7 +39,7 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error('[PATCH /api/tasks/[id]]', error)
+      console.error('[PATCH /api/tasks/[id]]', error.message, error.hint)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     return NextResponse.json(data)
@@ -43,24 +49,17 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient()
     const { data: { user }, error: ae } = await supabase.auth.getUser()
     if (ae || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
+    const { error } = await supabase.from('tasks').delete().eq('id', id).eq('user_id', user.id)
 
     if (error) {
-      console.error('[DELETE /api/tasks/[id]]', error)
+      console.error('[DELETE /api/tasks/[id]]', error.message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     return new NextResponse(null, { status: 204 })
