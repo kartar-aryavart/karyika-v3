@@ -1,26 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
+import { getAuthUser } from '@/lib/auth'
+import { LIMITS } from '@/lib/security/rate-limit'
+import { secureJson } from '@/lib/security/headers'
+import { getProjects, createProject } from '@/lib/dal'
 
 export async function GET() {
+  const auth = await getAuthUser()
+  if (!auth.ok) return auth.response
+  const rl = LIMITS.api(auth.user.id)
+  if (!rl.allowed) return secureJson({ error: 'Too many requests' }, { status: 429, retryAfter: rl.retryAfter })
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: ae } = await supabase.auth.getUser()
-    if (ae || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const { data, error } = await supabase.from('projects').select('*').eq('user_id', user.id).neq('status', 'archived').order('sort_order', { ascending: true })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data ?? [])
-  } catch { return NextResponse.json({ error: 'Server error' }, { status: 500 }) }
+    return secureJson(await getProjects(auth.user.id))
+  } catch { return secureJson({ error: 'Failed to fetch projects' }, { status: 500 }) }
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await getAuthUser()
+  if (!auth.ok) return auth.response
+  const rl = LIMITS.api(auth.user.id)
+  if (!rl.allowed) return secureJson({ error: 'Too many requests' }, { status: 429, retryAfter: rl.retryAfter })
+  let body: any
+  try { body = await req.json() }
+  catch { return secureJson({ error: 'Invalid JSON' }, { status: 400 }) }
+  if (!body.name?.trim()) return secureJson({ error: 'Name is required' }, { status: 400 })
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: ae } = await supabase.auth.getUser()
-    if (ae || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const body = await req.json()
-    const { data: last } = await supabase.from('projects').select('sort_order').eq('user_id', user.id).order('sort_order', { ascending: false }).limit(1).single()
-    const { data, error } = await supabase.from('projects').insert({ ...body, user_id: user.id, status: 'active', sort_order: (last?.sort_order ?? 0) + 1 }).select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data, { status: 201 })
-  } catch { return NextResponse.json({ error: 'Server error' }, { status: 500 }) }
+    return secureJson(await createProject(auth.user.id, body), { status: 201 })
+  } catch { return secureJson({ error: 'Failed to create project' }, { status: 500 }) }
 }

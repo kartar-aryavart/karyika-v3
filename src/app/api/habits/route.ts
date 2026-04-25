@@ -1,25 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
+import { getAuthUser } from '@/lib/auth'
+import { LIMITS } from '@/lib/security/rate-limit'
+import { secureJson } from '@/lib/security/headers'
+import { getHabits, createHabit } from '@/lib/dal'
 
 export async function GET() {
+  const auth = await getAuthUser()
+  if (!auth.ok) return auth.response
+  const rl = LIMITS.api(auth.user.id)
+  if (!rl.allowed) return secureJson({ error: 'Too many requests' }, { status: 429, retryAfter: rl.retryAfter })
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: ae } = await supabase.auth.getUser()
-    if (ae || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const { data, error } = await supabase.from('habits').select('*').eq('user_id', user.id).eq('is_archived', false).order('created_at', { ascending: true })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data ?? [])
-  } catch { return NextResponse.json({ error: 'Server error' }, { status: 500 }) }
+    return secureJson(await getHabits(auth.user.id))
+  } catch { return secureJson({ error: 'Failed to fetch habits' }, { status: 500 }) }
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await getAuthUser()
+  if (!auth.ok) return auth.response
+  const rl = LIMITS.api(auth.user.id)
+  if (!rl.allowed) return secureJson({ error: 'Too many requests' }, { status: 429, retryAfter: rl.retryAfter })
+  let body: any
+  try { body = await req.json() }
+  catch { return secureJson({ error: 'Invalid JSON' }, { status: 400 }) }
+  if (!body.name?.trim()) return secureJson({ error: 'Name is required' }, { status: 400 })
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: ae } = await supabase.auth.getUser()
-    if (ae || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const body = await req.json()
-    const { data, error } = await supabase.from('habits').insert({ ...body, user_id: user.id, logs: {}, currentStreak: 0, longestStreak: 0, is_archived: false }).select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data, { status: 201 })
-  } catch { return NextResponse.json({ error: 'Server error' }, { status: 500 }) }
+    return secureJson(await createHabit(auth.user.id, body), { status: 201 })
+  } catch (e: any) {
+    return secureJson({ error: 'Failed to create habit' }, { status: 500 })
+  }
 }

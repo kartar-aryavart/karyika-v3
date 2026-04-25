@@ -1,80 +1,97 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
+import { getAuthUser } from '@/lib/auth'
+import { LIMITS } from '@/lib/security/rate-limit'
+import { secureJson } from '@/lib/security/headers'
+import { getTasks, createTask } from '@/lib/dal'
+
+// camelCase from form → snake_case DB columns
+const COL: Record<string, string> = {
+  dueTime: 'due_time', estimatedTime: 'estimated_time',
+  customFields: 'custom_fields', sprintId: 'sprint_id',
+  coverColor: 'cover_color', projectId: 'project_id',
+}
+function normalize(b: Record<string, any>) {
+  const out: Record<string, any> = {}
+  for (const [k, v] of Object.entries(b)) {
+    out[COL[k] ?? k] = v === '' ? null : v
+  }
+  return out
+}
+function toInt(v: any): number | null {
+  if (v == null || v === '') return null
+  const n = parseInt(String(v), 10)
+  return isNaN(n) ? null : n
+}
 
 export async function GET(req: NextRequest) {
+  // 1. Auth
+  const auth = await getAuthUser()
+  if (!auth.ok) return auth.response
+
+  // 2. Rate limit
+  const rl = LIMITS.api(auth.user.id)
+  if (!rl.allowed) return secureJson(
+    { error: 'Too many requests', code: 'RATE_LIMITED' },
+    { status: 429, retryAfter: rl.retryAfter }
+  )
+
+  // 3. Fetch — DAL enforces user_id isolation
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: ae } = await supabase.auth.getUser()
-    if (ae || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false })
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data ?? [])
-  } catch (e) {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    const tasks = await getTasks(auth.user.id)
+    return secureJson(tasks, { remaining: rl.remaining })
+  } catch (e: any) {
+    return secureJson({ error: 'Failed to fetch tasks' }, { status: 500 })
   }
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const supabase = await createClient()
-    const { data: { user }, error: ae } = await supabase.auth.getUser()
-    if (ae || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // 1. Auth
+  const auth = await getAuthUser()
+  if (!auth.ok) return auth.response
 
-    const b = await req.json()
-    if (!b.title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 })
+  // 2. Rate limit
+  const rl = LIMITS.api(auth.user.id)
+  if (!rl.allowed) return secureJson(
+    { error: 'Too many requests', code: 'RATE_LIMITED' },
+    { status: 429, retryAfter: rl.retryAfter }
+  )
 
-    // Get next sort_order
-    const { data: maxRow } = await supabase
-      .from('tasks').select('sort_order').eq('user_id', user.id)
-      .order('sort_order', { ascending: false }).limit(1).maybeSingle()
+  // 3. Parse + validate
+  let body: any
+  try { body = await req.json() }
+  catch { return secureJson({ error: 'Invalid JSON' }, { status: 400 }) }
 
-    // Build insert — only columns that exist in DB (all snake_case)
-    const insert: Record<string, any> = {
-      user_id:        user.id,
-      title:          b.title.trim(),
-      description:    b.desc || b.description           || null,
-      status:         b.status         || 'todo',
-      priority:       b.priority       || 'none',
-      due:            b.due            || null,
-      due_time:       b.due_time       || b.dueTime         || null,
-      estimated_time: toInt(b.estimated_time ?? b.estimatedTime),
-      points:         toInt(b.points) ?? 0,
-      project_id:     b.project_id     || b.projectId       || null,
-      tags:           Array.isArray(b.tags) ? b.tags : [],
-      subtasks:       Array.isArray(b.subtasks) ? b.subtasks : [],
-      custom_fields:  b.customFields   || b.custom_fields   || null,
-      sprint_id:      b.sprintId       || b.sprint_id       || null,
-      urgency:        b.urgency        || 'not-urgent',
-      importance:     b.importance     || 'important',
-      cover_color:    b.coverColor     || b.cover_color     || null,
-      recurring:      (b.recurring && b.recurring !== 'none') ? b.recurring : null,
-      done:           false,
-      sort_order:     (maxRow?.sort_order ?? 0) + 1,
-    }
+  const title = body.title?.trim()
+  if (!title) return secureJson({ error: 'Title is required' }, { status: 400 })
 
-    const { data, error } = await supabase
-      .from('tasks').insert(insert).select().single()
-
-    if (error) {
-      console.error('POST /api/tasks error:', error.message, error.details)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-    return NextResponse.json(data, { status: 201 })
-  } catch (e: any) {
-    console.error('POST /api/tasks unexpected:', e?.message)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  // 4. Build clean insert object — only allowed fields
+  const raw = normalize(body)
+  const payload = {
+    title,
+    description:    raw.description || raw.desc || null,
+    status:         raw.status      || 'todo',
+    priority:       raw.priority    || 'none',
+    due:            raw.due         || null,
+    due_time:       raw.due_time    || null,
+    estimated_time: toInt(raw.estimated_time),
+    points:         toInt(raw.points) ?? 0,
+    project_id:     raw.project_id  || null,
+    tags:           Array.isArray(raw.tags) ? raw.tags : [],
+    subtasks:       Array.isArray(raw.subtasks) ? raw.subtasks : [],
+    custom_fields:  raw.custom_fields || null,
+    sprint_id:      raw.sprint_id   || null,
+    urgency:        raw.urgency     || 'not-urgent',
+    importance:     raw.importance  || 'important',
+    cover_color:    raw.cover_color || null,
+    recurring:      (raw.recurring && raw.recurring !== 'none') ? raw.recurring : null,
   }
-}
 
-function toInt(v: any): number | null {
-  if (v === null || v === undefined || v === '') return null
-  const n = parseInt(String(v), 10)
-  return isNaN(n) ? null : n
+  // 5. Create via DAL
+  try {
+    const task = await createTask(auth.user.id, payload)
+    return secureJson(task, { status: 201, remaining: rl.remaining })
+  } catch (e: any) {
+    console.error('[POST /api/tasks]', e.message)
+    return secureJson({ error: 'Failed to create task' }, { status: 500 })
+  }
 }
