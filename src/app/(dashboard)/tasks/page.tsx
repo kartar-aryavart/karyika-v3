@@ -691,24 +691,37 @@ export default function TasksPage() {
 
   const mutCreate = useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed')
+      if (!res.ok) {
+        // Show full DB error so we can debug
+        const msg = json.hint ? `${json.error} — ${json.hint}` : json.error || 'Failed to create task'
+        throw new Error(msg)
+      }
       return json
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tasks'] }); toast(t(T.toast.taskAdded, lang as any), 'success') },
-    onError: (e: any) => toast(e.message || t(T.toast.error, lang as any), 'error'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tasks'] }); toast('✅ Task added!', 'success') },
+    onError: (e: any) => { console.error('Task create error:', e.message); toast(`❌ ${e.message}`, 'error') },
   })
 
   const mutUpdate = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const res = await fetch(`/api/tasks/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (res.status === 204) return {}
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed')
+      if (!res.ok) throw new Error(json.hint ? `${json.error} — ${json.hint}` : json.error || 'Failed to update task')
       return json
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
-    onError: (e: any) => toast(e.message || t(T.toast.error, lang as any), 'error'),
+    onError: (e: any) => { console.error('Task update error:', e.message); toast(`❌ ${e.message}`, 'error') },
   })
 
   const mutDelete = useMutation({

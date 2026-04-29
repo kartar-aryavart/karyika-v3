@@ -2,96 +2,106 @@ import { NextRequest } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { LIMITS } from '@/lib/security/rate-limit'
 import { secureJson } from '@/lib/security/headers'
-import { getTasks, createTask } from '@/lib/dal'
+import { createClient } from '@/lib/supabase/server'
 
-// camelCase from form → snake_case DB columns
-const COL: Record<string, string> = {
-  dueTime: 'due_time', estimatedTime: 'estimated_time',
-  customFields: 'custom_fields', sprintId: 'sprint_id',
-  coverColor: 'cover_color', projectId: 'project_id',
-}
-function normalize(b: Record<string, any>) {
-  const out: Record<string, any> = {}
-  for (const [k, v] of Object.entries(b)) {
-    out[COL[k] ?? k] = v === '' ? null : v
-  }
-  return out
-}
 function toInt(v: any): number | null {
   if (v == null || v === '') return null
   const n = parseInt(String(v), 10)
   return isNaN(n) ? null : n
 }
 
-export async function GET(req: NextRequest) {
-  // 1. Auth
+export async function GET() {
   const auth = await getAuthUser()
   if (!auth.ok) return auth.response
 
-  // 2. Rate limit
   const rl = LIMITS.api(auth.user.id)
-  if (!rl.allowed) return secureJson(
-    { error: 'Too many requests', code: 'RATE_LIMITED' },
-    { status: 429, retryAfter: rl.retryAfter }
-  )
+  if (!rl.allowed) return secureJson({ error: 'Too many requests' }, { status: 429, retryAfter: rl.retryAfter })
 
-  // 3. Fetch — DAL enforces user_id isolation
   try {
-    const tasks = await getTasks(auth.user.id)
-    return secureJson(tasks, { remaining: rl.remaining })
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', auth.user.id)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('[GET tasks] DB error:', error)
+      return secureJson({ error: error.message }, { status: 500 })
+    }
+    return secureJson(Array.isArray(data) ? data : [])
   } catch (e: any) {
-    return secureJson({ error: 'Failed to fetch tasks' }, { status: 500 })
+    console.error('[GET tasks] unexpected:', e)
+    return secureJson({ error: 'Server error' }, { status: 500 })
   }
 }
 
 export async function POST(req: NextRequest) {
-  // 1. Auth
   const auth = await getAuthUser()
   if (!auth.ok) return auth.response
 
-  // 2. Rate limit
   const rl = LIMITS.api(auth.user.id)
-  if (!rl.allowed) return secureJson(
-    { error: 'Too many requests', code: 'RATE_LIMITED' },
-    { status: 429, retryAfter: rl.retryAfter }
-  )
+  if (!rl.allowed) return secureJson({ error: 'Too many requests' }, { status: 429, retryAfter: rl.retryAfter })
 
-  // 3. Parse + validate
   let body: any
   try { body = await req.json() }
-  catch { return secureJson({ error: 'Invalid JSON' }, { status: 400 }) }
+  catch { return secureJson({ error: 'Invalid JSON body' }, { status: 400 }) }
 
-  const title = body.title?.trim()
+  const title = body?.title?.trim()
   if (!title) return secureJson({ error: 'Title is required' }, { status: 400 })
 
-  // 4. Build clean insert object — only allowed fields
-  const raw = normalize(body)
-  const payload = {
-    title,
-    description:    raw.description || raw.desc || null,
-    status:         raw.status      || 'todo',
-    priority:       raw.priority    || 'none',
-    due:            raw.due         || null,
-    due_time:       raw.due_time    || null,
-    estimated_time: toInt(raw.estimated_time),
-    points:         toInt(raw.points) ?? 0,
-    project_id:     raw.project_id  || null,
-    tags:           Array.isArray(raw.tags) ? raw.tags : [],
-    subtasks:       Array.isArray(raw.subtasks) ? raw.subtasks : [],
-    custom_fields:  raw.custom_fields || null,
-    sprint_id:      raw.sprint_id   || null,
-    urgency:        raw.urgency     || 'not-urgent',
-    importance:     raw.importance  || 'important',
-    cover_color:    raw.cover_color || null,
-    recurring:      (raw.recurring && raw.recurring !== 'none') ? raw.recurring : null,
-  }
-
-  // 5. Create via DAL
   try {
-    const task = await createTask(auth.user.id, payload)
-    return secureJson(task, { status: 201, remaining: rl.remaining })
+    const supabase = await createClient()
+
+    // Get next sort_order
+    const { data: maxRow } = await supabase
+      .from('tasks')
+      .select('sort_order')
+      .eq('user_id', auth.user.id)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    // Build insert — ONLY columns that exist in DB (snake_case)
+    const insert = {
+      user_id:        auth.user.id,
+      title,
+      description:    body.description   ?? body.desc         ?? null,
+      status:         body.status        ?? 'todo',
+      priority:       body.priority      ?? 'none',
+      due:            body.due           ?? null,
+      due_time:       body.due_time      ?? body.dueTime       ?? null,
+      estimated_time: toInt(body.estimated_time ?? body.estimatedTime),
+      points:         toInt(body.points) ?? 0,
+      project_id:     body.project_id    ?? body.projectId     ?? null,
+      tags:           Array.isArray(body.tags) ? body.tags : [],
+      subtasks:       Array.isArray(body.subtasks) ? body.subtasks : [],
+      custom_fields:  body.custom_fields ?? body.customFields  ?? null,
+      sprint_id:      body.sprint_id     ?? body.sprintId      ?? null,
+      urgency:        body.urgency       ?? 'not-urgent',
+      importance:     body.importance    ?? 'important',
+      cover_color:    body.cover_color   ?? body.coverColor    ?? null,
+      recurring:      (body.recurring && body.recurring !== 'none') ? body.recurring : null,
+      done:           false,
+      sort_order:     (maxRow?.sort_order ?? 0) + 1,
+    }
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert(insert)
+      .select()
+      .single()
+
+    if (error) {
+      // Return full DB error so we can debug
+      console.error('[POST tasks] DB error:', error.message, '| hint:', error.hint, '| details:', error.details)
+      return secureJson({ error: error.message, hint: error.hint, details: error.details }, { status: 500 })
+    }
+
+    return secureJson(data, { status: 201 })
   } catch (e: any) {
-    console.error('[POST /api/tasks]', e.message)
-    return secureJson({ error: 'Failed to create task' }, { status: 500 })
+    console.error('[POST tasks] unexpected:', e.message)
+    return secureJson({ error: e.message || 'Server error' }, { status: 500 })
   }
 }
